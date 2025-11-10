@@ -1,5 +1,5 @@
 const express = require('express');
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const cors = require('cors');
 const dotenv = require('dotenv').config();
 const app = express();
@@ -33,8 +33,23 @@ async function run() {
 
     // get all models
     app.get('/models', async (req, res) => {
-      const cursor = modelsCollection.find({});
+      const cursor = modelsCollection.find({}).project({ name: 1, image: 1, framework: 1, description: 1, _id: 1 });
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // get lastest models
+    app.get('/latest-models', async (req, res) => {
+      const cursor = modelsCollection.find({}).sort({ createdAt: -1 }).project({ name: 1, image: 1, framework: 1, description: 1, _id: 1 }).limit(6);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    // get one model using _id
+    app.get('/models/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await modelsCollection.findOne(query);
       res.send(result);
     });
 
