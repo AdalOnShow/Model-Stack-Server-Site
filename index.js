@@ -55,6 +55,13 @@ async function run() {
       res.send(result);
     });
 
+    // create model
+    app.post('/models', async (req, res) => {
+      const model = req.body;
+      const result = await modelsCollection.insertOne(model);
+      res.send(result);
+    });
+
     // post a new purchase
     app.post('/purchases', async (req, res) => {
       const purchase = req.body;
