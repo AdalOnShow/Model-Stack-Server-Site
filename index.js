@@ -62,6 +62,26 @@ async function run() {
       res.send(result);
     });
 
+    // update model usging patch method
+    app.patch('/models/:id', async (req, res) => {
+      const id = req.params.id;
+      const updatedModel = req.body;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: updatedModel
+      };
+      const result = await modelsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    // delete a model
+    app.delete('/models/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await modelsCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // post a new purchase
     app.post('/purchases', async (req, res) => {
       const purchase = req.body;
