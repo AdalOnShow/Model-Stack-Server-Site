@@ -30,6 +30,8 @@ async function run() {
 
     const db = client.db('model_stack');
     const modelsCollection = db.collection('models');
+    const purchasesCollection = db.collection('purchases');
+
 
     // get all models
     app.get('/models', async (req, res) => {
@@ -50,6 +52,26 @@ async function run() {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await modelsCollection.findOne(query);
+      res.send(result);
+    });
+
+    // post a new purchase
+    app.post('/purchases', async (req, res) => {
+      const purchase = req.body;
+      const result = await purchasesCollection.insertOne(purchase);
+      res.send(result);
+    });
+
+    // increase model purchase value after purchase
+    app.patch('/models/:id', async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $inc: {
+          purchased: 1
+        }
+      };
+      const result = await modelsCollection.updateOne(query, updateDoc);
       res.send(result);
     });
 
