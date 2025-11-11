@@ -21,7 +21,7 @@ app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
-});
+}); 
 
 // mongodb connection
 async function run() {
