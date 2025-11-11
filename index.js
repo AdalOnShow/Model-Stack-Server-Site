@@ -35,7 +35,15 @@ async function run() {
 
     // get all models
     app.get('/models', async (req, res) => {
-      const cursor = modelsCollection.find({}).project({ name: 1, image: 1, framework: 1, description: 1, _id: 1 });
+      const email = req.query.email;
+      const project = { name: 1, image: 1, framework: 1, description: 1, _id: 1, useCase: 1, createdBy: 1 };
+      if (email) {
+        const query = { createdBy: email };
+        const cursor = modelsCollection.find(query).project(project);
+        const result = await cursor.toArray();
+        res.send(result);
+      }
+      const cursor = modelsCollection.find({}).project(project);
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -71,6 +79,15 @@ async function run() {
         $set: updatedModel
       };
       const result = await modelsCollection.updateOne(query, updateDoc);
+      res.send(result);
+    });
+
+    // query models by creaded email
+    app.get('/purchases', async (req, res) => {
+      const email = req.query.email;
+      const query = { purchasedEmail: email };
+      const cursor = purchasesCollection.find(query);
+      const result = await cursor.toArray();
       res.send(result);
     });
 
