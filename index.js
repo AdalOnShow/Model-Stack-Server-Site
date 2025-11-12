@@ -35,7 +35,7 @@ async function run() {
     // get all models
     app.get('/models', async (req, res) => {
       const email = req.query.email;
-      const search = req.query.search || "";
+      const { search, frameworks } = req.query;
       const project = { name: 1, image: 1, framework: 1, description: 1, _id: 1, useCase: 1, createdBy: 1 };
       const query = {}
 
@@ -45,6 +45,9 @@ async function run() {
 
       if (search) {
         query.name = { $regex: search, $options: 'i' };
+      }
+      if (frameworks) {
+        query.framework = { $in: frameworks.split(',') };
       }
       const cursor = modelsCollection.find(query).project(project);
       const result = await cursor.toArray();
@@ -65,6 +68,18 @@ async function run() {
       const result = await modelsCollection.findOne(query);
       res.send(result);
     });
+
+    // get models frameworksList
+    app.get('/frameworks', async (req, res) => {
+      const cursor = modelsCollection.aggregate([
+        { $group: { _id: "$framework" } },
+        { $project: { _id: 0, framework: "$_id" } }
+      ])
+      const result = await cursor.toArray();
+      const frameworks = result.map(f => f.framework);
+      res.send(frameworks);
+    });
+
 
     // create model
     app.post('/models', async (req, res) => {
