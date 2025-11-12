@@ -21,7 +21,7 @@ app.use(express.json());
 
 app.get('/', (req, res) => {
   res.send('Hello World!');
-}); 
+});
 
 // mongodb connection
 async function run() {
@@ -32,18 +32,21 @@ async function run() {
     const modelsCollection = db.collection('models');
     const purchasesCollection = db.collection('purchases');
 
-
     // get all models
     app.get('/models', async (req, res) => {
       const email = req.query.email;
+      const search = req.query.search || "";
       const project = { name: 1, image: 1, framework: 1, description: 1, _id: 1, useCase: 1, createdBy: 1 };
+      const query = {}
+
       if (email) {
-        const query = { createdBy: email };
-        const cursor = modelsCollection.find(query).project(project);
-        const result = await cursor.toArray();
-        res.send(result);
+        query.createdBy = email;
       }
-      const cursor = modelsCollection.find({}).project(project);
+
+      if (search) {
+        query.name = { $regex: search, $options: 'i' };
+      }
+      const cursor = modelsCollection.find(query).project(project);
       const result = await cursor.toArray();
       res.send(result);
     });
