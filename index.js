@@ -15,12 +15,38 @@ const client = new MongoClient(uri, {
   }
 });
 
+// firebase admin connection
+const admin = require("firebase-admin");
+const serviceAccount = require("./model-stack-firebase-adminsdk.json");
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
+});
+
+
 // middleware
 app.use(cors());
 app.use(express.json());
 
+const verifyFirebaseToken = async (req, res, next) => {
+  const authorization = req.headers.authorization;
+
+  if(authorization){
+    const token = authorization.split(' ')[1];
+    admin.auth().verifyIdToken(token)
+      .then(decodedToken => {
+        req.decodedEmail = decodedToken.email;
+        next();
+      })
+      .catch(error => {
+        res.status(401).send({ message: 'unauthorized access' });
+      });
+  } else {
+    res.status(401).send({ message: 'unauthorized access' });
+  }
+};
+
 app.get('/', (req, res) => {
-  res.send('Hello World!');
+  res.send('Model Stack API Server Is Running!....');
 });
 
 // mongodb connection
@@ -82,14 +108,14 @@ async function run() {
 
 
     // create model
-    app.post('/models', async (req, res) => {
+    app.post('/models',verifyFirebaseToken, async (req, res) => {
       const model = req.body;
       const result = await modelsCollection.insertOne(model);
       res.send(result);
     });
 
     // update model usging patch method
-    app.patch('/models/:id', async (req, res) => {
+    app.patch('/models/:id', verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const updatedModel = req.body;
       const query = { _id: new ObjectId(id) };
@@ -101,16 +127,19 @@ async function run() {
     });
 
     // query models by creaded email
-    app.get('/purchases', async (req, res) => {
+    app.get('/purchases',verifyFirebaseToken, async (req, res) => {
       const email = req.query.email;
       const query = { purchasedEmail: email };
+      if(email !== req.decodedEmail){
+        return res.status(403).send({ message: 'forbidden access' });
+      }
       const cursor = purchasesCollection.find(query);
       const result = await cursor.toArray();
       res.send(result);
     });
 
     // delete a model
-    app.delete('/models/:id', async (req, res) => {
+    app.delete('/models/:id',verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await modelsCollection.deleteOne(query);
@@ -118,14 +147,14 @@ async function run() {
     });
 
     // post a new purchase
-    app.post('/purchases', async (req, res) => {
+    app.post('/purchases',verifyFirebaseToken, async (req, res) => {
       const purchase = req.body;
       const result = await purchasesCollection.insertOne(purchase);
       res.send(result);
     });
 
     // increase model purchase value after purchase
-    app.patch('/models/:id', async (req, res) => {
+    app.patch('/models/:id', verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
