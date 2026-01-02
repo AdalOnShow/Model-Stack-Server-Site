@@ -17,7 +17,8 @@ const client = new MongoClient(uri, {
 
 // firebase admin connection
 const admin = require("firebase-admin");
-const serviceAccount = require("./model-stack-firebase-adminsdk.json");
+const decoded = Buffer.from(process.env.FIREBASE_SERVICE_KEY, 'base64').toString('utf8');
+const serviceAccount = JSON.parse(decoded);
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount)
 });
@@ -30,7 +31,7 @@ app.use(express.json());
 const verifyFirebaseToken = async (req, res, next) => {
   const authorization = req.headers.authorization;
 
-  if(authorization){
+  if (authorization) {
     const token = authorization.split(' ')[1];
     admin.auth().verifyIdToken(token)
       .then(decodedToken => {
@@ -52,7 +53,7 @@ app.get('/', (req, res) => {
 // mongodb connection
 async function run() {
   try {
-    await client.connect();
+    // await client.connect();
 
     const db = client.db('model_stack');
     const modelsCollection = db.collection('models');
@@ -108,7 +109,7 @@ async function run() {
 
 
     // create model
-    app.post('/models',verifyFirebaseToken, async (req, res) => {
+    app.post('/models', verifyFirebaseToken, async (req, res) => {
       const model = req.body;
       const result = await modelsCollection.insertOne(model);
       res.send(result);
@@ -127,10 +128,10 @@ async function run() {
     });
 
     // query models by creaded email
-    app.get('/purchases',verifyFirebaseToken, async (req, res) => {
+    app.get('/purchases', verifyFirebaseToken, async (req, res) => {
       const email = req.query.email;
       const query = { purchasedEmail: email };
-      if(email !== req.decodedEmail){
+      if (email !== req.decodedEmail) {
         return res.status(403).send({ message: 'forbidden access' });
       }
       const cursor = purchasesCollection.find(query);
@@ -139,7 +140,7 @@ async function run() {
     });
 
     // delete a model
-    app.delete('/models/:id',verifyFirebaseToken, async (req, res) => {
+    app.delete('/models/:id', verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const result = await modelsCollection.deleteOne(query);
@@ -147,7 +148,7 @@ async function run() {
     });
 
     // post a new purchase
-    app.post('/purchases',verifyFirebaseToken, async (req, res) => {
+    app.post('/purchases', verifyFirebaseToken, async (req, res) => {
       const purchase = req.body;
       const result = await purchasesCollection.insertOne(purchase);
       res.send(result);
@@ -166,7 +167,7 @@ async function run() {
       res.send(result);
     });
 
-    await client.db("admin").command({ ping: 1 });
+    // await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
   } finally {
     // await client.close();
