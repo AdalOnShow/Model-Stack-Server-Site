@@ -59,11 +59,11 @@ async function run() {
     const modelsCollection = db.collection('models');
     const purchasesCollection = db.collection('purchases');
 
-    // get all models
+    // get all models with pagination and sorting
     app.get('/models', async (req, res) => {
       const email = req.query.email;
-      const { search, frameworks } = req.query;
-      const project = { name: 1, image: 1, framework: 1, description: 1, _id: 1, useCase: 1, createdBy: 1 };
+      const { search, frameworks, page = 1, limit = 6, sortBy = 'newest' } = req.query;
+      const project = { name: 1, image: 1, framework: 1, description: 1, _id: 1, useCase: 1, createdBy: 1, purchased: 1, createdAt: 1 };
       const query = {}
 
       if (email) {
@@ -76,9 +76,54 @@ async function run() {
       if (frameworks) {
         query.framework = { $in: frameworks.split(',') };
       }
-      const cursor = modelsCollection.find(query).project(project);
-      const result = await cursor.toArray();
-      res.send(result);
+
+      // Sorting logic
+      let sortOptions = {};
+      switch (sortBy) {
+        case 'newest':
+          sortOptions = { createdAt: -1 };
+          break;
+        case 'mostPurchased':
+          sortOptions = { purchased: -1 };
+          break;
+        case 'nameAZ':
+          sortOptions = { name: 1 };
+          break;
+        default:
+          sortOptions = { createdAt: -1 };
+      }
+
+      // Pagination logic
+      const pageNumber = parseInt(page);
+      const limitNumber = parseInt(limit);
+      const skip = (pageNumber - 1) * limitNumber;
+
+      // Get total count for pagination
+      const totalModels = await modelsCollection.countDocuments(query);
+      const totalPages = Math.ceil(totalModels / limitNumber);
+
+      // Get paginated and sorted results
+      const cursor = modelsCollection
+        .find(query)
+        .project(project)
+        .sort(sortOptions)
+        .skip(skip)
+        .limit(limitNumber);
+      
+      const models = await cursor.toArray();
+
+      // Return paginated response
+      res.send({
+        models,
+        pagination: {
+          currentPage: pageNumber,
+          totalPages,
+          totalModels,
+          hasNextPage: pageNumber < totalPages,
+          hasPrevPage: pageNumber > 1,
+          limit: limitNumber
+        }
+      });
     });
 
     // get lastest models
@@ -115,7 +160,7 @@ async function run() {
       res.send(result);
     });
 
-    // update model usging patch method
+    // update model using patch method
     app.patch('/models/:id', verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const updatedModel = req.body;
@@ -127,7 +172,7 @@ async function run() {
       res.send(result);
     });
 
-    // query models by creaded email
+    // query models by created email
     app.get('/purchases', verifyFirebaseToken, async (req, res) => {
       const email = req.query.email;
       const query = { purchasedEmail: email };
@@ -155,7 +200,7 @@ async function run() {
     });
 
     // increase model purchase value after purchase
-    app.patch('/models/:id', verifyFirebaseToken, async (req, res) => {
+    app.patch('/models/:id/purchase', verifyFirebaseToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
       const updateDoc = {
